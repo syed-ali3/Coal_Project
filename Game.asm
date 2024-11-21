@@ -1,13 +1,34 @@
 [org 0x100]
-PA_POS: dw 230
-PB_POS: dw 3750
-BALL_POS: dw 3600
-sizeofPaddles: dw 10
-
-;to print black use 0x0720  or to print white use 0x7720
-
-
 jmp start
+PA_POS: dw 0
+PB_POS: dw 0
+BALL_POS: dw 0
+sizeofPaddles: dw 10 ; const
+ScoreA: dw 0
+scoreB: dw 0
+BallDirection: dw 0 ;diagonal direction
+ballnextPos:dw 0    ;balls up/down direction
+
+scorestr: db 'Score :'
+
+
+; our timer interupt------------------------
+MY_TIMER_ISR:
+    push ax
+    call movBall
+
+
+
+
+    mov al 0x20
+    mov 0x20,al
+    pop ax
+    iret
+
+movBall:
+
+
+
 
 
 
@@ -33,8 +54,16 @@ clrscr:
     ret
 ;Loads the startig game screen ---------------
 initializeGame:
+    push bp 
+    mov bp,sp
+    pusha
+
+    mov word[PA_POS],70
+    mov word[PB_POS],3750
+    mov word[BALL_POS],3600
     call clrscr
     ; intializing player A Paddle
+    
     mov ax,0XB800
     mov es,ax
     mov di,[PA_POS]
@@ -51,14 +80,15 @@ initializeGame:
     ;initializing ball
     mov si,[BALL_POS]
     mov word[es:si],0x072A
+
+    popa
+    pop bp
     RET
-
-
 
 
 start:
     
     call initializeGame
-
+   labe: jmp labe
     mov ax,0x4c00
     int 0x21
