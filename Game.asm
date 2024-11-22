@@ -35,79 +35,113 @@ movBall:
     ; setting setup for printing on screen
     mov ax,0xb800
     mov es,ax
-    xor ax,ax
-    ;4 Conditions
     
+    ;4 Conditions
+    call RC_CHECK
+    Call LC_CHECK
     cmp word[cs:ballVertical],0
     je Up_Movement
-
-
+    down_Movement:
+     ;CHECKING THAT IF theres a paddle on the next pos of ball
+        mov si,[cs:BALL_POS]
+        cmp si,3680
+        jle MOVE_NEXT_POS
+        add si,[cs:BallDirection]
+        cmp word[es:si],0x7720
+        je playerBcollision
+        jmp $
 
 
 ; M O V I N G  --  U P W A R D  ----------------------------------------------------------------------------------
 ; 3 CONDITIONS TO HANDLE COLLISION (LEFT-MOST COLUMN ,RIGHTMOST-COLUMN  PADDLEOCCURS)
-Up_Movement:
-    xor ax,ax
-   ;CHECKING THAT IF ITS PRESENT ON RIGHT-MOST COLUMN
-    mov ax,[cs:BALL_POS]
-    mov bl,160
-    xor dx,dx
-    div bl
-    cmp ah,159
-    je rightmostCOL
-    ;CHECKING THAT IF ITS PRESENT ON LEFT-MOST COLUMN
-    mov ax,[cs:BALL_POS]
-    mov bl,160
-    xor dx,dx
-    div bl
-    cmp ah,0
-    je LeftmostCOL
-    ;CHECKING THAT IF theres a paddle on the next pos of ball
-    mov si,[cs:BALL_POS]
-    sub si,[cs:BallDirection]
-    cmp word[es:si],0x7720
-    je PaddleCollisionOccurs
-
-    ;IF no collision then we can move the ball
-    jmp MOVEMENT_1
-
-    rightmostCOL:
-        mov word[cs:BallDirection],162
-        jmp backtoInt
-
-    LeftmostCOL:
-        mov word[cs:BallDirection],158
-        jmp backtoInt
-
-    PaddleCollisionOccurs:
-        mov word[cs:ballVertical],1
-        xor ax,ax
-        mov ax,[cs:BallDirection]
-        cmp ax,158
-        je changeTo162
-        mov word[cs:BallDirection],158
-        jmp backtoInt
-        changeTo162:mov word[cs:BallDirection],162
-        jmp backtoInt
-    
-    ; Movement section of the ball from current to next position
-    MOVEMENT_1: 
-        ; clearing current position
+; 4th condition if opponent cannot stop the ball
+    Up_Movement:
+        
+        ;CHECKING THAT IF theres a paddle on the next pos of ball
         mov si,[cs:BALL_POS]
-        mov word[es:si],0x0720
+        cmp si,320
+        jge MOVE_NEXT_POS
+        add si,[cs:BallDirection]
+        cmp word[es:si],0x7720
+        je playerAcollision
+        ;playerA-lose
+        jmp $
 
-        ;updating current pos of ball
-        mov ax,[cs:BallDirection]
-        sub [cs:BALL_POS],ax
 
-        ; placing ball on updated position
-        mov si,[cs:BALL_POS]
-        mov word[es:si],0x072A
+      
 
-   
-    backtoInt:popa
+        ;IF no collision then we can move the ball
+        jmp MOVE_NEXT_POS
+
+        playerAcollision:
+            mov word[cs:ballVertical],1
+            mov ax,[cs:BallDirection]
+            cmp ax,-158
+            jne changeTo158
+            mov word[cs:BallDirection],162
+            jmp MOVE_NEXT_POS
+            changeTo158:mov word[cs:BallDirection],158
+            jmp MOVE_NEXT_POS
+
+       playerBcollision:
+            mov word[cs:ballVertical],0
+            mov ax,[cs:BallDirection]
+            cmp ax,158
+            jne changeTo_158
+            mov word[cs:BallDirection],-162
+            jmp MOVE_NEXT_POS
+            changeTo_158:mov word[cs:BallDirection],-158
+            
+
+        ; Movement section of the ball from current to next position
+        MOVE_NEXT_POS: 
+            ; clearing current position
+            mov si,[cs:BALL_POS]
+            mov word[es:si],0x0720
+
+            ;updating current pos of ball
+            mov ax,[cs:BallDirection]
+            ADD [cs:BALL_POS],ax
+
+            ; placing ball on updated position
+            mov si,[cs:BALL_POS]
+            mov word[es:si],0x072A
+    popa
     RET
 
+;CHECKING THAT IF ITS PRESENT ON RIGHT-MOST COLUMN
+    RC_CHECK:
+        mov ax,[cs:BALL_POS]
+        mov bl,160
+        xor dx,dx
+        div bl
+        cmp ah,158
+        je isOnRC
+        ret
+        isOnRC:
+        cmp word[cs:BallDirection],-158
+        jne convertTo158
+        mov word[cs:BallDirection],-162
+        ret
+        convertTo158:mov word[cs:BallDirection],158
+        ret
+        ;CHECKING THAT IF ITS PRESENT ON LEFT-MOST COLUMN
+    LC_CHECK:
+        mov ax,[cs:BALL_POS]
+        mov bl,160
+        xor dx,dx
+        div bl
+        cmp ah,0
+        je isOnLC
+        ret
+        isOnLC:
+        cmp word[cs:BallDirection],-162
+        jne convertTo162
+        mov word[cs:BallDirection],-158
+        ret
+        convertTo162:
+        mov word[cs:BallDirection],162
+        ret
 
 
 
@@ -145,10 +179,12 @@ initializeGame:
     cmp word[ballVertical],0
     jne skip
     mov word[ballVertical],1
+    mov word[BallDirection],162
+    jmp next
     skip: mov word[ballVertical],0
-    mov word[BallDirection],158
+    mov word[BallDirection],-158
 
-    call clrscr
+   next: call clrscr
     ; intializing player A Paddle
     
     mov ax,0XB800
