@@ -32,7 +32,7 @@ MY_TIMER_ISR:
 
 movBall:
     pusha
-; setting setup for printing on screen
+    ; setting setup for printing on screen
     mov ax,0xb800
     mov es,ax
     xor ax,ax
@@ -45,7 +45,9 @@ movBall:
 
 
 ; M O V I N G  --  U P W A R D  ----------------------------------------------------------------------------------
-    Up_Movement:xor ax,ax
+; 3 CONDITIONS TO HANDLE COLLISION (LEFT-MOST COLUMN ,RIGHTMOST-COLUMN  PADDLEOCCURS)
+Up_Movement:
+    xor ax,ax
    ;CHECKING THAT IF ITS PRESENT ON RIGHT-MOST COLUMN
     mov ax,[cs:BALL_POS]
     mov bl,160
@@ -59,18 +61,51 @@ movBall:
     xor dx,dx
     div bl
     cmp ah,0
-    jne movement1
-    LeftmostCOL:mov word[cs:BallDirection],158
-    jmp movement1
-    rightmostCOL:mov word[cs:BallDirection],162
-    ;moving ball to next position and removing it from its current position
-    movement1:mov si,[cs:BALL_POS]
-    mov word[es:si],0x0720
-    mov ax,[cs:BallDirection]
-    sub [cs:BALL_POS],ax
+    je LeftmostCOL
+    ;CHECKING THAT IF theres a paddle on the next pos of ball
     mov si,[cs:BALL_POS]
-    mov word[es:si],0x072A
-    popa
+    sub si,[cs:BallDirection]
+    cmp word[es:si],0x7720
+    je PaddleCollisionOccurs
+
+    ;IF no collision then we can move the ball
+    jmp MOVEMENT_1
+
+    rightmostCOL:
+        mov word[cs:BallDirection],162
+        jmp backtoInt
+
+    LeftmostCOL:
+        mov word[cs:BallDirection],158
+        jmp backtoInt
+
+    PaddleCollisionOccurs:
+        mov word[cs:ballVertical],1
+        xor ax,ax
+        mov ax,[cs:BallDirection]
+        cmp ax,158
+        je changeTo162
+        mov word[cs:BallDirection],158
+        jmp backtoInt
+        changeTo162:mov word[cs:BallDirection],162
+        jmp backtoInt
+    
+    ; Movement section of the ball from current to next position
+    MOVEMENT_1: 
+        ; clearing current position
+        mov si,[cs:BALL_POS]
+        mov word[es:si],0x0720
+
+        ;updating current pos of ball
+        mov ax,[cs:BallDirection]
+        sub [cs:BALL_POS],ax
+
+        ; placing ball on updated position
+        mov si,[cs:BALL_POS]
+        mov word[es:si],0x072A
+
+   
+    backtoInt:popa
     RET
 
 
