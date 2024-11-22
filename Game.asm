@@ -7,7 +7,8 @@ sizeofPaddles: dw 10 ; const
 ScoreA: dw 0
 scoreB: dw 0
 BallDirection: dw 0 ;diagonal direction
-ballnextPos:dw 0    ;balls up/down direction
+ballVertical:dw 0    ;balls up/down direction  0 means ball is moving upward - 1 means ball is moving downward
+tickcount dw 0
 
 scorestr: db 'Score :'
 
@@ -15,18 +16,62 @@ scorestr: db 'Score :'
 ; our timer interupt------------------------
 MY_TIMER_ISR:
     push ax
+    inc word[cs:tickcount]
+    cmp word[cs:tickcount],4
+    jne returning
+    mov word[cs:tickcount],0
     call movBall
 
 
 
 
-    mov al 0x20
-    mov 0x20,al
+    returning:mov al,0x20
+    out 0x20,al
     pop ax
     iret
 
 movBall:
+    pusha
+; setting setup for printing on screen
+    mov ax,0xb800
+    mov es,ax
+    xor ax,ax
+    ;4 Conditions
+    
+    cmp word[cs:ballVertical],0
+    je Up_Movement
 
+
+
+
+; M O V I N G  --  U P W A R D  ----------------------------------------------------------------------------------
+    Up_Movement:xor ax,ax
+   ;CHECKING THAT IF ITS PRESENT ON RIGHT-MOST COLUMN
+    mov ax,[cs:BALL_POS]
+    mov bl,160
+    xor dx,dx
+    div bl
+    cmp ah,159
+    je rightmostCOL
+    ;CHECKING THAT IF ITS PRESENT ON LEFT-MOST COLUMN
+    mov ax,[cs:BALL_POS]
+    mov bl,160
+    xor dx,dx
+    div bl
+    cmp ah,0
+    jne movement1
+    LeftmostCOL:mov word[cs:BallDirection],158
+    jmp movement1
+    rightmostCOL:mov word[cs:BallDirection],162
+    ;moving ball to next position and removing it from its current position
+    movement1:mov si,[cs:BALL_POS]
+    mov word[es:si],0x0720
+    mov ax,[cs:BallDirection]
+    sub [cs:BALL_POS],ax
+    mov si,[cs:BALL_POS]
+    mov word[es:si],0x072A
+    popa
+    RET
 
 
 
@@ -61,6 +106,10 @@ initializeGame:
     mov word[PA_POS],70
     mov word[PB_POS],3750
     mov word[BALL_POS],3600
+    ; for future movement
+    mov word[ballVertical],0
+    mov word[BallDirection],158
+
     call clrscr
     ; intializing player A Paddle
     
@@ -89,6 +138,14 @@ initializeGame:
 start:
     
     call initializeGame
+    mov ax,0
+    mov es,ax
+    cli
+    mov word[es:8*4],MY_TIMER_ISR
+    mov word[es:8*4+2],cs
+    sti
+
+
    labe: jmp labe
     mov ax,0x4c00
     int 0x21
