@@ -7,7 +7,7 @@ sizeofPaddles: dw 10 ; const
 ScoreA: dw 0
 scoreB: dw 0
 BallDirection: dw 0 ;diagonal direction
-ballVertical:dw 1    ;balls up/down direction  0 means ball is moving upward - 1 means ball is moving downward
+ballVertical:dw 0    ;balls up/down direction  0 means ball is moving upward - 1 means ball is moving downward
 tickcount dw 0
 
 scorestr: db 'Score :'
@@ -46,10 +46,11 @@ movBall:
         mov si,[cs:BALL_POS]
         cmp si,3680
         jle MOVE_NEXT_POS
-        add si,[cs:BallDirection]
+        add si,160
         cmp word[es:si],0x7720
         je playerBcollision
-        jmp $
+        call initializeGame
+        jmp MOVE_NEXT_POS
 
 
 ; M O V I N G  --  U P W A R D  ----------------------------------------------------------------------------------
@@ -61,11 +62,12 @@ movBall:
         mov si,[cs:BALL_POS]
         cmp si,320
         jge MOVE_NEXT_POS
-        add si,[cs:BallDirection]
+        add si,-160
         cmp word[es:si],0x7720
         je playerAcollision
         ;playerA-lose
-        jmp $
+        call initializeGame
+        jmp MOVE_NEXT_POS
 
 
       
@@ -174,16 +176,17 @@ initializeGame:
 
     mov word[PA_POS],70
     mov word[PB_POS],3910
-    mov word[BALL_POS],3760
+    
     ; for future movement
     cmp word[ballVertical],0
-    jne skip
+    je skip
     mov word[ballVertical],1
     mov word[BallDirection],162
+    mov word[BALL_POS],230
     jmp next
     skip: mov word[ballVertical],0
     mov word[BallDirection],-158
-
+    mov word[BALL_POS],3760
    next: call clrscr
     ; intializing player A Paddle
     
