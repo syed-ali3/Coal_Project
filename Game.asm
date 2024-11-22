@@ -7,7 +7,7 @@ sizeofPaddles: dw 10 ; const
 ScoreA: dw 0
 scoreB: dw 0
 BallDirection: dw 0 ;diagonal direction
-ballVertical:dw 0    ;balls up/down direction  0 means ball is moving upward - 1 means ball is moving downward
+ballVertical:dw 1    ;balls up/down direction  0 means ball is moving upward - 1 means ball is moving downward
 tickcount dw 0
 
 scorestr: db 'Score :'
@@ -139,10 +139,13 @@ initializeGame:
     pusha
 
     mov word[PA_POS],70
-    mov word[PB_POS],3750
-    mov word[BALL_POS],3600
+    mov word[PB_POS],3910
+    mov word[BALL_POS],3760
     ; for future movement
-    mov word[ballVertical],0
+    cmp word[ballVertical],0
+    jne skip
+    mov word[ballVertical],1
+    skip: mov word[ballVertical],0
     mov word[BallDirection],158
 
     call clrscr
@@ -170,6 +173,122 @@ initializeGame:
     RET
 
 
+MY_KB_ISR:
+    push ax
+
+    in al,0x60
+    cmp word[ballVertical],0
+    je PA_movement
+    PB_movement:
+        cmp al,0x4d
+        jne checkBLeft
+        call move_B_Right
+        jmp endISR
+        checkBLeft:cmp al,0x4b
+        jne endISR
+        call move_B_Left
+        jmp endISR
+
+
+    PA_movement:
+        cmp al,0x20
+        jne checkLeft
+        call move_A_Right
+        jmp endISR
+        checkLeft: cmp al,0x1E
+        jne endISR
+        call move_A_Left
+
+
+    endISR:
+    mov al,0x20
+    out 0x20,al
+    pop ax
+    iret
+
+
+;moving Player A Rightward ----------
+move_A_Right:
+    pusha
+    push cs
+    pop ds
+    mov ax,[sizeofPaddles]
+    shl ax,1
+    add ax,[PA_POS]
+    cmp ax,160
+    je endAR 
+    mov ax,0xb800
+    mov es,ax
+    mov di,[PA_POS]
+    mov word[es:di],0x0720
+    add word[PA_POS],2
+    add di,[sizeofPaddles]
+    add di,[sizeofPaddles]
+    mov word[es:di],0x7720
+    endAR: popa
+    ret
+;moving Player A Leftward ----------
+move_A_Left: 
+    pusha
+    push cs
+    pop ds
+    mov ax,[PA_POS]
+    cmp ax,0
+    jl endAL 
+    mov ax,0xb800
+    mov es,ax
+    mov di,[sizeofPaddles]
+    shl di,1
+    add di,[PA_POS]
+    mov word[es:di],0x0720
+    sub word[PA_POS],2
+    sub di,[sizeofPaddles]
+    sub di,[sizeofPaddles]
+    mov word[es:di],0x7720
+    endAL: popa
+    ret
+
+move_B_Left:
+    pusha
+    push cs
+    pop ds
+    mov ax,[PB_POS]
+    cmp ax,3840
+    jl endBL 
+    mov ax,0xb800
+    mov es,ax
+    mov di,[sizeofPaddles]
+    shl di,1
+    add di,[PB_POS]
+    mov word[es:di],0x0720
+    sub word[PB_POS],2
+    sub di,[sizeofPaddles]
+    sub di,[sizeofPaddles]
+    mov word[es:di],0x7720
+    endBL: popa
+    ret
+
+;moving Player B Rightward ----------
+move_B_Right:
+    pusha
+    push cs
+    pop ds
+    mov ax,[sizeofPaddles]
+    shl ax,1
+    add ax,[PB_POS]
+    cmp ax,4000
+    je endBR 
+    mov ax,0xb800
+    mov es,ax
+    mov di,[PB_POS]
+    mov word[es:di],0x0720
+    add word[PB_POS],2
+    add di,[sizeofPaddles]
+    add di,[sizeofPaddles]
+    mov word[es:di],0x7720
+    endBR: popa
+    ret
+
 start:
     
     call initializeGame
@@ -178,6 +297,8 @@ start:
     cli
     mov word[es:8*4],MY_TIMER_ISR
     mov word[es:8*4+2],cs
+    mov word[es:9*4],MY_KB_ISR
+    mov word[es:9*4+2],cs
     sti
 
 
