@@ -1,11 +1,14 @@
 [org 0x100]
 jmp start
+old_timer dd 0
+old_kb dd 0
+
 PA_POS: dw 0
 PB_POS: dw 0
 BALL_POS: dw 0
 sizeofPaddles: dw 10 ; const
 ScoreA: dw 0
-scoreB: dw 0
+ScoreB: dw 0
 BallDirection: dw 0 ;diagonal direction
 ballVertical:dw 0    ;balls up/down direction  0 means ball is moving upward - 1 means ball is moving downward
 tickcount dw 0
@@ -49,6 +52,7 @@ movBall:
         add si,160
         cmp word[es:si],0x7720
         je playerBcollision
+        inc word [ScoreA]
         call initializeGame
         jmp MOVE_NEXT_POS
 
@@ -65,7 +69,7 @@ movBall:
         add si,-160
         cmp word[es:si],0x7720
         je playerAcollision
-        ;playerA-lose
+        inc word [ScoreB]
         call initializeGame
         jmp MOVE_NEXT_POS
 
@@ -206,7 +210,15 @@ initializeGame:
     ;initializing ball
     mov si,[BALL_POS]
     mov word[es:si],0x072A
+    ; printing Player A score
+    push word 160
+    push word[ScoreA]
+    call printScore
 
+    ; printing player B score
+    push word 160*23
+    push word[ScoreB]
+    call printScore
     popa
     pop bp
     RET
@@ -328,11 +340,42 @@ move_B_Right:
     endBR: popa
     ret
 
+printScore:
+    push bp
+    mov bp,sp
+    push cs
+    pop ds
+    push word 0xb800
+    pop es
+    mov si,scorestr
+    mov di,[bp+6]
+    mov cx,7
+    myloop:movsb
+    inc di
+    loop myloop
+    mov al,[bp+4]
+    add al,'0'
+    mov byte[es:di],al
+    pop bp
+    ret 4
+
+
 start:
     
     call initializeGame
     mov ax,0
     mov es,ax
+    ;storing old timer isr
+    mov ax,[es:8*4]
+    mov [old_timer],ax
+    mov ax,[es:8*4+2]
+    mov [old_timer+2],ax
+    ;storing old keyboard isr
+    mov ax,[es:9*4]
+    mov [old_kb],ax
+    mov ax,[es:9*4+2]
+    mov [old_kb+2],ax
+
     cli
     mov word[es:8*4],MY_TIMER_ISR
     mov word[es:8*4+2],cs
@@ -341,6 +384,36 @@ start:
     sti
 
 
-   labe: jmp labe
+labe: 
+   
+    cli
+    cmp word[ScoreA],5
+    je playerAwins
+    cmp word[ScoreB],5
+    je playerBwins
+    sti
+    jmp labe
+
+playerAwins:
+
+
+jmp end
+playerBwins:
+
+
+end:    
+    
+    call clrscr
+    mov ax,[old_timer]
+    mov word[es:8*4],ax
+    mov ax,[old_timer+2]
+    mov word[es:8*4+2],ax
+    mov ax,[old_kb]
+    mov word[es:9*4],ax
+    mov ax,[old_kb+2]
+    mov word[es:9*4+2],ax
+    sti
     mov ax,0x4c00
     int 0x21
+
+ 
