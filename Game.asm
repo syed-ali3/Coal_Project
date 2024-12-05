@@ -1,17 +1,21 @@
 [org 0x100]
 jmp start
+old_timer dd 0
+old_kb dd 0
+
 PA_POS: dw 0
 PB_POS: dw 0
 BALL_POS: dw 0
 sizeofPaddles: dw 10 ; const
 ScoreA: dw 0
-scoreB: dw 0
+ScoreB: dw 0
 BallDirection: dw 0 ;diagonal direction
 ballVertical:dw 0    ;balls up/down direction  0 means ball is moving upward - 1 means ball is moving downward
 tickcount dw 0
 
 scorestr: db 'Score :'
-
+winA: db 'Player A Wins !!!'
+winB: db 'Player B Wins !!!'
 
 ; our timer interupt------------------------
 MY_TIMER_ISR:
@@ -49,6 +53,7 @@ movBall:
         add si,160
         cmp word[es:si],0x7720
         je playerBcollision
+        inc word [ScoreA]
         call initializeGame
         jmp MOVE_NEXT_POS
 
@@ -65,7 +70,7 @@ movBall:
         add si,-160
         cmp word[es:si],0x7720
         je playerAcollision
-        ;playerA-lose
+        inc word [ScoreB]
         call initializeGame
         jmp MOVE_NEXT_POS
 
@@ -206,7 +211,15 @@ initializeGame:
     ;initializing ball
     mov si,[BALL_POS]
     mov word[es:si],0x072A
+    ; printing Player A score
+    push word 160
+    push word[ScoreA]
+    call printScore
 
+    ; printing player B score
+    push word 160*23
+    push word[ScoreB]
+    call printScore
     popa
     pop bp
     RET
@@ -328,11 +341,62 @@ move_B_Right:
     endBR: popa
     ret
 
+printScore:
+    push bp
+    mov bp,sp
+    push cs
+    pop ds
+    push word 0xb800
+    pop es
+    mov si,scorestr
+    mov di,[bp+6]
+    mov cx,7
+    myloop:movsb
+    inc di
+    loop myloop
+    mov al,[bp+4]
+    add al,'0'
+    mov byte[es:di],al
+    pop bp
+    ret 4
+
+winPrinter:
+    push si
+    mov si,sp
+    pusha
+    mov ah,0x13
+    mov al,1
+    mov bh,0
+    mov bl,7
+    mov dx,0x0C1E
+    mov cx,17
+    push cs
+    pop es
+    mov bp,[si+4]
+    int 0x10
+
+
+    popa
+    pop si
+    ret 2
+
 start:
     
     call initializeGame
-    mov ax,0
-    mov es,ax
+   
+    mov ax, 0x0000  ; Segment of IVT
+    mov es, ax
+    ; Save old timer ISR
+    mov ax, [es:8*4]      ; Offset of interrupt 08h
+    mov [old_timer], ax
+    mov ax, [es:8*4+2]    ; Segment of interrupt 08h
+    mov [old_timer+2], ax
+    ; Save old keyboard ISR
+    mov ax, [es:9*4]      ; Offset of interrupt 09h
+    mov [old_kb], ax
+    mov ax, [es:9*4+2]    ; Segment of interrupt 09h
+    mov [old_kb+2], ax
+
     cli
     mov word[es:8*4],MY_TIMER_ISR
     mov word[es:8*4+2],cs
@@ -341,6 +405,47 @@ start:
     sti
 
 
-   labe: jmp labe
-    mov ax,0x4c00
+labe: 
+    cli
+    cmp word[ScoreA],5
+    jge playerAwins
+    cmp word[ScoreB],5
+    jge playerBwins
+    sti
+    jmp labe
+
+playerAwins:
+    call clrscr
+    push WORD winA
+    call winPrinter
+    jmp end ; Exit the game
+
+playerBwins:
+    call clrscr
+    push WORD winB
+    call winPrinter
+    jmp end ; Exit the game
+
+
+
+end:   
+    
+                    
+    mov ax, 0x0000      
+    mov es, ax
+    ; Restore old timer ISR
+    mov ax, [old_timer]  ; Offset of old timer ISR
+    mov [es:8*4], ax
+    mov ax, [old_timer+2]; Segment of old timer ISR
+    mov [es:8*4+2], ax
+    ; Restore old keyboard ISR
+    mov ax, [old_kb]     ; Offset of old keyboard ISR
+    mov [es:9*4], ax
+    mov ax, [old_kb+2]   ; Segment of old keyboard ISR
+    mov [es:9*4+2], ax
+    sti                  ; Re-enable interrupts
+    mov ax, 0x4C00       ; Exit to DOS
     int 0x21
+
+
+ 
