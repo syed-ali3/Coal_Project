@@ -49,10 +49,13 @@ movBall:
      ;CHECKING THAT IF theres a paddle on the next pos of ball
         mov si,[cs:BALL_POS]
         cmp si,3680
-        jle MOVE_NEXT_POS
+        jg checkBPad
+        jmp MOVE_NEXT_POS
+        checkBPad:
         add si,160
         cmp word[es:si],0x7720
         je playerBcollision
+        call No_collosion
         inc word [ScoreA]
         call initializeGame
         jmp MOVE_NEXT_POS
@@ -70,6 +73,7 @@ movBall:
         add si,-160
         cmp word[es:si],0x7720
         je playerAcollision
+        call No_collosion
         inc word [ScoreB]
         call initializeGame
         jmp MOVE_NEXT_POS
@@ -150,10 +154,30 @@ movBall:
         mov word[cs:BallDirection],162
         ret
 
+No_collosion:
+     ; clearing current position
+        mov si,[cs:BALL_POS]
+        mov word[es:si],0x0720
 
+          ;updating current pos of ball
+        mov ax,[cs:BallDirection]
+        ADD [cs:BALL_POS],ax
 
-
-
+            ; placing ball on updated position
+        mov si,[cs:BALL_POS]
+        mov word[es:si],0x872A
+        ; giving a small delay
+        push cx
+        mov cx, 60 ; change the values to increase delay time
+        delay_loop1:
+        push cx
+        mov cx, 0xFFFF
+        delay_loop2:
+        loop delay_loop2
+        pop cx
+        loop delay_loop1
+        pop cx
+        ret
 
 
 ; clear screen function ---------------------
