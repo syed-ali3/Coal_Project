@@ -85,6 +85,9 @@ movBall:
         jmp MOVE_NEXT_POS
 
         playerAcollision:
+            mov cx, 6479
+            mov bx, 2
+            call os_play_sound
             mov word[cs:ballVertical],1
             mov ax,[cs:BallDirection]
             cmp ax,-158
@@ -95,6 +98,9 @@ movBall:
             jmp MOVE_NEXT_POS
 
        playerBcollision:
+            mov cx, 6479
+            mov bx, 2
+            call os_play_sound
             mov word[cs:ballVertical],0
             mov ax,[cs:BallDirection]
             cmp ax,158
@@ -130,6 +136,9 @@ movBall:
         je isOnRC
         ret
         isOnRC:
+        mov cx, 8997
+        mov bx, 3
+        call os_play_sound
         cmp word[cs:BallDirection],-158
         jne convertTo158
         mov word[cs:BallDirection],-162
@@ -146,6 +155,9 @@ movBall:
         je isOnLC
         ret
         isOnLC:
+        mov cx, 8997
+        mov bx, 3
+        call os_play_sound
         cmp word[cs:BallDirection],-162
         jne convertTo162
         mov word[cs:BallDirection],-158
@@ -166,17 +178,37 @@ No_collosion:
             ; placing ball on updated position
         mov si,[cs:BALL_POS]
         mov word[es:si],0x872A
-        ; giving a small delay
-        push cx
-        mov cx, 60 ; change the values to increase delay time
-        delay_loop1:
-        push cx
-        mov cx, 0xFFFF
-        delay_loop2:
-        loop delay_loop2
-        pop cx
-        loop delay_loop1
-        pop cx
+           mov cx, 3589
+        mov bx, 20
+        call os_play_sound
+        ret
+
+
+os_play_sound:
+        mov     al, 182
+        out     0x43, al
+        mov     ax, cx
+
+        out     0x42, al
+        mov     al, ah
+        out     0x42, al
+        in      al, 0x61
+
+        or      al, 00000011b
+        out     0x61, al
+
+        .pause1:
+            mov cx, 65535
+
+        .pause2:
+            dec cx
+            jne .pause2
+            dec bx
+            jne .pause1
+
+            in  al, 0x61
+            and al, 11111100b
+            out 0x61, al
         ret
 
 
