@@ -11,19 +11,28 @@ ScoreA: dw 0
 ScoreB: dw 0
 BallDirection: dw 0 ;diagonal direction
 ballVertical:dw 0    ;balls up/down direction  0 means ball is moving upward - 1 means ball is moving downward
-tickcount dw 0
+tickcount dw -1
+reducedBallSpeed: dw 0     ; 0 hard    2 medium   4  easy
 
+; string used in the game
+PingPong: db '----- PING PONG -----'    ;SIZE 21
+difficult: db 'Enter your Difficulty'   ;SIZE 21
+Pressone: db 'Easy     [ Press 1 ]'         ;SIZE 20
+Presstwo: db 'Medium   [ Press 2 ]'
+Pressthree: db 'Hard     [ Press 3 ]'
 scorestr: db 'Score :'
 winA: db 'Player A Wins !!!'
 winB: db 'Player B Wins !!!'
+
 
 ; our timer interupt------------------------
 MY_TIMER_ISR:
     push ax
     inc word[cs:tickcount]
-    cmp word[cs:tickcount],4
+    mov ax,[cs:reducedBallSpeed]
+    cmp word[cs:tickcount],ax
     jne returning
-    mov word[cs:tickcount],0
+    mov word[cs:tickcount],-1
     call movBall
 
 
@@ -437,7 +446,62 @@ winPrinter:
     ret 2
 
 start:
+    call clrscr
+    mov ah,0x13
+    mov al,1
+    mov bh,0
+    mov bl,7
+    mov dx,0x071E
+    mov cx,21
+    push cs
+    pop es
+    mov bp,PingPong
+    int 0x10
+    mov cx,21
+    mov bp,difficult
+    mov dx,0x091E
+    int 0x10
+    mov cx,20
+    mov bp,Pressone
+    mov dx,0x0A1E
+    int 0x10
+    mov cx,20
+    mov bp,Presstwo
+    mov dx,0x0B1E
+    int 0x10
+    mov cx,20
+    mov bp,Pressthree
+    mov dx,0x0C1E
+    int 0x10
+
+DifficultyInput:
+
+    xor ax,ax
+    mov ah,0
+    int 0x16
+    sub al,'0'
+    cmp al,1
+    je setEasy
+    cmp al,2
+    je setMed
+    cmp al,3
+    je setHard
+    jmp DifficultyInput
+
+
     
+    
+    setEasy:mov word[reducedBallSpeed],4
+    jmp Game_starts
+
+    setMed:mov word[reducedBallSpeed],2
+    jmp Game_starts
+
+    setHard:mov word[reducedBallSpeed],0
+    
+    
+Game_starts:
+
     call initializeGame
    
     mov ax, 0x0000  ; Segment of IVT
@@ -461,14 +525,14 @@ start:
     sti
 
 
-labe: 
+gameloop: 
     cli
     cmp word[ScoreA],5
     jge playerAwins
     cmp word[ScoreB],5
     jge playerBwins
     sti
-    jmp labe
+    jmp gameloop
 
 playerAwins:
     call clrscr
