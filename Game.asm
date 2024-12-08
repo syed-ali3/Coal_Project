@@ -448,7 +448,7 @@ winPrinter:
 start:
     call clrscr
     mov ah,0x13
-    mov al,1
+    mov al,0
     mov bh,0
     mov bl,7
     mov dx,0x071E
